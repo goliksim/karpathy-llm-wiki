@@ -12,18 +12,19 @@
   <img src="assets/karpathy-tweet.png" alt="Karpathy's tweet about LLM Wiki" width="560">
 </p>
 
-`karpathy-llm-wiki` packages [Karpathy's LLM Wiki idea](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) into one installable [Agent Skills](https://agentskills.io) skill. Your coding agent ingests sources into `raw/`, compiles durable knowledge pages into `wiki/`, answers questions with citations, and lints the wiki for consistency.
+`karpathy-llm-wiki` packages [Karpathy's LLM Wiki idea](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) into one installable [Agent Skills](https://agentskills.io) skill. Your coding agent ingests sources into `raw/`, compiles durable knowledge pages into `wiki/`, answers questions with citations, generates higher-level insights, and lints the wiki for consistency.
 
 ## What Is an LLM Wiki?
 
 An **LLM wiki** is a knowledge system where the LLM maintains structured wiki pages instead of re-searching raw documents on every question. New sources are compiled into durable markdown pages, cross-references are updated over time, and answers cite the wiki pages that already contain the synthesized knowledge.
 
-This skill gives you three operations:
+This skill gives you four operations:
 
 | Operation | What it does | Output |
 |-----------|--------------|--------|
 | **Ingest** | Collects a source into `raw/` and compiles it into the wiki | New or updated wiki pages |
 | **Query** | Searches the wiki and answers with citations | Grounded answers linking to markdown pages |
+| **Insights** | Synthesizes business ideas, reframings, actions, workflow updates, or publishable posts from the wiki | Chat-only insights or saved pages under `wiki/Insights/` |
 | **Lint** | Checks index integrity, links, and wiki health | Auto-fixes plus reported issues |
 
 See [SKILL.md](SKILL.md) for the full skill specification.
@@ -71,7 +72,13 @@ The skill stores the source in `raw/`, then compiles or updates the right knowle
 
 The skill searches the wiki and answers with citations linking back to your markdown pages.
 
-### 3. Keep the wiki healthy
+### 3. Generate insights
+
+> "Form insights from the latest wiki changes"
+
+The skill can answer in chat, or save durable insight pages under `wiki/Insights/` when you ask it to update the wiki.
+
+### 4. Keep the wiki healthy
 
 > "Lint my wiki"
 
@@ -88,12 +95,57 @@ your-project/
 │       └── 2026-04-03-source-article.md
 ├── wiki/           ← Compiled knowledge pages maintained by the LLM
 │   ├── topic/
-│   │   └── concept-name.md
+│   │   ├── concept-name.md
+│   │   └── subsection/
+│   │       └── nested-concept.md
+│   ├── Insights/
+│   │   └── useful-synthesis.md
 │   ├── index.md    ← Global table of contents
 │   └── log.md      ← Append-only operation log
 ```
 
-Each new source can update multiple pages, strengthen cross-references, and record contradictions. That is what makes the wiki compound over time.
+Topic directories can contain nested subsection directories when they make retrieval clearer. The global `wiki/index.md` mirrors that effective hierarchy so both humans and agents can discover top-level topics, subsections, and saved insight pages.
+
+Each new source can update multiple pages, strengthen cross-references, record contradictions, and optionally trigger an insight pass. That is what makes the wiki compound over time.
+
+## Obsidian and Dataview
+
+Wiki pages use standard markdown with Dataview-compatible inline fields:
+
+```markdown
+Type:: article
+Updated:: 2026-05-27
+Sources:: Karpathy, 2026
+Raw:: [source](../../raw/topic/source.md)
+Tags:: "retrieval", "wiki"
+Use cases:: "answer questions", "maintain knowledge"
+Related questions:: "How should an LLM wiki evolve?"
+```
+
+This keeps the wiki readable in any markdown editor while making it useful inside Obsidian Dataview queries. Multi-value metadata such as `Tags`, `Use cases`, and `Related questions` is stored as quoted comma-separated inline values so Dataview can parse them as arrays.
+
+## Insight Generation
+
+Insights are first-class wiki artifacts, not throwaway summaries. They live under `wiki/Insights/`, cite the underlying wiki pages, and can be revised as the knowledge base changes.
+
+Supported insight types:
+
+| Type | Best for |
+|------|----------|
+| **Business Idea** | Product, startup, service, or monetizable directions |
+| **Wise Thought** | Non-obvious reframings and belief challenges |
+| **Action Advice** | Concrete next actions |
+| **Pipeline Update** | Improvements to life, work, learning, or wiki workflows |
+| **Social Question or Post** | Questions or post drafts worth publishing |
+
+There are two flows:
+
+| Flow | When it runs | What happens |
+|------|--------------|--------------|
+| **Automatic** | After ingest | The skill reviews the newly changed knowledge pages and saves only high-signal insights when the update warrants it |
+| **Manual** | On request | You choose a topic, latest changes, article set, or insight type; the skill either answers in chat or writes/revises pages in `wiki/Insights/` |
+
+Saved insight pages update `wiki/index.md` and append an `insights` entry to `wiki/log.md`, just like other durable wiki changes.
 
 ## Tool Compatibility
 
